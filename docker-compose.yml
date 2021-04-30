@@ -1,0 +1,10 @@
+version: "2.3"
+services: 
+  django:
+    container_name: django-channel
+    build: ./apps/
+    volumes: 
+      - ./apps:/var/www/django
+    ports:
+      - 7979:8000
+    tty: true
