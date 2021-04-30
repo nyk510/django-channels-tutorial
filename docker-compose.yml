@@ -1,5 +1,10 @@
 version: "2.3"
 services: 
+  redis:
+    container_name: channel-redis
+    image: redis:5
+    ports: 
+      - 6379:6379
   django:
     container_name: django-channel
     build: ./apps/
@@ -8,3 +13,5 @@ services:
     ports:
       - 7979:8000
     tty: true
+    depends_on: 
+      - redis
