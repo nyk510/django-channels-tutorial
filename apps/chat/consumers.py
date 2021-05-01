@@ -1,8 +1,11 @@
 import json
 
 from asgiref.sync import async_to_sync
+from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.generic.websocket import WebsocketConsumer
+
+from .models import Message, ChatRoom
 
 
 class ChatConsumer(WebsocketConsumer):
@@ -84,6 +87,10 @@ class AsyncChatConsumer(AsyncWebsocketConsumer):
 
         await self.accept()
 
+        # note: アクセス権がある room つくって permission 確認とかいれたい
+        self.user = self.scope.get('user')
+        self.chat_room = database_sync_to_async(ChatRoom.objects.get)(room_id=self.room_name)
+
     async def disconnect(self, close_code):
         # Leave room group
         await self.channel_layer.group_discard(
@@ -94,22 +101,36 @@ class AsyncChatConsumer(AsyncWebsocketConsumer):
     # Receive message from WebSocket
     async def receive(self, text_data=None, bytes_data=None):
         text_data_json = json.loads(text_data)
-        message = text_data_json['message']
+        text = text_data_json['message']
+        print(self.user, text, self.chat_room)
+
+        message = await self.save_message(message=text)
 
         # Send message to room group
         await self.channel_layer.group_send(
             self.room_group_name,
             {
                 'type': 'chat_message',
-                'message': message
+                'sender': self.user.username,
+                'message': text
             }
         )
 
     # Receive message from room group
     async def chat_message(self, event):
         message = event['message']
+        print(event)
 
         # Send message to WebSocket
         await self.send(text_data=json.dumps({
+            'sender': event.get('sender'),
             'message': message
         }))
+
+    @database_sync_to_async
+    def save_message(self, message):
+        return Message.objects.create(
+            room_id=self.room_name,
+            author=self.user,
+            text=message
+        )
