@@ -1,53 +1,89 @@
 <!-- chat/templates/chat/room.html -->
 <!DOCTYPE html>
+{% load humanize %}
 <html>
 
 <head>
-  <meta charset="utf-8" />
-  <title>Chat Room</title>
+  <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
+  <meta charset="utf-8"/>
+  <title>Chat Room {{ room_name }}</title>
 </head>
 
 <body>
-  <textarea id="chat-log" cols="100" rows="20"></textarea><br>
-  <input id="chat-message-input" type="text" size="100"><br>
-  <input id="chat-message-submit" type="button" value="Send">
+<div class="container mx-auto text-gray-800">
+  <h3 class="text-xl py-10 ">
+    {{ room.title }}
+    <span class="text-xs">
+      / {{ room.room_id }}
+    </span>
+  </h3>
+  <div>
+    <h4 class="text-md pb-2">過去のメッセージ</h4>
+    {% for message in messages %}
+      <div class="green text-sm text-gray-600 pb-2">
+        - {{ message.text }}
+        <span class="text-xs">
+        / {{ message.author }} {{ message.created_at | naturaltime }}
+      </span>
+      </div>
+    {% endfor %}
+  </div>
+  <div class="pt-3">
+    <div class="py-2">
+      <h4 class="text-md pb-2">Current Message</h4>
+      <textarea
+              class="w-full p-2 text-sm border-2 border-gray-100 rounded-md"
+              id="chat-log" rows="20"></textarea>
+    </div>
+    <div class="py-2">
+      <h4 class="text-sm pb-2">Send Message</h4>
+      <input
+              id="chat-message-input"
+              type="text"
+              class="w-full p-2 text-sm bg-gray-100 rounded-md">
+    </div>
+  </div>
+  <input id="chat-message-submit"
+         class="px-4 py-1 rounded-md bg-gray-600 text-white"
+         type="button" value="そうしん">
   {{ room_name|json_script:"room-name" }}
-  <script>
-    const roomName = JSON.parse(document.getElementById('room-name').textContent);
+</div>
+<script>
+  const roomName = JSON.parse(document.getElementById('room-name').textContent);
 
-    const chatSocket = new WebSocket(
-      'ws://'
-      + window.location.host
-      + '/ws/chat/'
-      + roomName
-      + '/'
-    );
+  const chatSocket = new WebSocket(
+          'ws://'
+          + window.location.host
+          + '/ws/chat/'
+          + roomName
+          + '/'
+  );
 
-    chatSocket.onmessage = function (e) {
-      const data = JSON.parse(e.data);
-      document.querySelector('#chat-log').value += (data.message + '\n');
-    };
+  chatSocket.onmessage = function (e) {
+    const data = JSON.parse(e.data);
+    document.querySelector('#chat-log').value += ('[' + data.sender + ']' + data.message + '\n');
+  };
 
-    chatSocket.onclose = function (e) {
-      console.error('Chat socket closed unexpectedly');
-    };
+  chatSocket.onclose = function (e) {
+    console.error('Chat socket closed unexpectedly');
+  };
 
-    document.querySelector('#chat-message-input').focus();
-    document.querySelector('#chat-message-input').onkeyup = function (e) {
-      if (e.keyCode === 13) {  // enter, return
-        document.querySelector('#chat-message-submit').click();
-      }
-    };
+  document.querySelector('#chat-message-input').focus();
+  document.querySelector('#chat-message-input').onkeyup = function (e) {
+    if (e.keyCode === 13) {  // enter, return
+      document.querySelector('#chat-message-submit').click();
+    }
+  };
 
-    document.querySelector('#chat-message-submit').onclick = function (e) {
-      const messageInputDom = document.querySelector('#chat-message-input');
-      const message = messageInputDom.value;
-      chatSocket.send(JSON.stringify({
-        'message': message
-      }));
-      messageInputDom.value = '';
-    };
-  </script>
+  document.querySelector('#chat-message-submit').onclick = function (e) {
+    const messageInputDom = document.querySelector('#chat-message-input');
+    const message = messageInputDom.value;
+    chatSocket.send(JSON.stringify({
+      'message': message
+    }));
+    messageInputDom.value = '';
+  };
+</script>
 </body>
 
 </html>
